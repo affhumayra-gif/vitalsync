@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meals — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display:flex;gap:4px;margin-bottom:1.4rem;
+      background:rgba(12,7,3,0.5);border:1px solid var(--border);
+      border-radius:var(--radius-md);padding:4px;width:fit-content;
+    }
+    .mode-btn {
+      padding:7px 18px;border-radius:var(--radius-sm);border:none;
+      background:transparent;color:rgba(200,170,130,0.75);
+      font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;
+      cursor:pointer;transition:all 0.18s;
+    }
+    .mode-btn.active {
+      background:var(--copper-glow-md);border:1px solid var(--border-hover);
+      color:var(--copper-pale);
+    }
+    .mode-btn:not(.active):hover { color:var(--copper-light); }
+
+    /* ── Autocomplete ── */
+    .autocomplete-wrap { position:relative;flex:2;min-width:200px; }
+    #autocomplete-dropdown {
+      display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+      background:rgba(12,7,3,0.97);border:1px solid var(--border-hover);
+      border-radius:var(--radius-md);box-shadow:0 12px 40px rgba(0,0,0,0.7);
+      z-index:500;max-height:300px;overflow-y:auto;backdrop-filter:blur(24px);
+    }
+    .ac-item {
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 14px;cursor:pointer;
+      border-bottom:1px solid rgba(255,200,150,0.06);transition:background 0.12s;
+    }
+    .ac-item:last-child{border-bottom:none;}
+    .ac-item:hover,.ac-item.active{background:rgba(212,128,58,0.18);}
+    .ac-name{font-size:0.9rem;font-weight:500;color:var(--text);}
+    .ac-macros{font-size:0.74rem;color:rgba(200,170,130,0.7);margin-top:2px;}
+    .ac-cal{font-size:0.82rem;font-weight:700;color:var(--copper-light);white-space:nowrap;margin-left:12px;background:var(--copper-glow);padding:2px 8px;border-radius:999px;border:1px solid var(--border);flex-shrink:0;}
+
+    /* ── Calorie / burn preview ── */
+    .cal-preview {
+      display:flex;align-items:center;justify-content:center;
+      padding:11px 16px;background:rgba(255,220,160,0.06);
+      border:1px solid var(--border-subtle);border-radius:var(--radius-sm);
+      font-size:0.95rem;font-weight:700;color:rgba(200,170,130,0.80);
+      white-space:nowrap;min-width:120px;
+      transition:color 0.2s,border-color 0.2s,background 0.2s;
+    }
+    .cal-preview.has-value{color:var(--copper-light);border-color:var(--border-hover);background:var(--copper-glow);}
+
+    /* ── Portion shortcuts ── */
+    #portion-btns{display:none;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
+    .btn-portion{padding:5px 12px;background:rgba(12,7,3,0.5);border:1px solid var(--border);border-radius:999px;color:rgba(200,170,130,0.75);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
+    .btn-portion:hover,.btn-portion.active{background:var(--copper-glow);border-color:var(--copper);color:var(--copper-light);}
+
+    /* ── Nutrition panel ── */
+    #nutri-panel{display:none;margin:10px 0 4px;background:rgba(212,128,58,0.06);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;}
+    .nutri-grid{display:flex;flex-wrap:wrap;gap:6px 16px;}
+    .nutri-item{display:flex;gap:4px;align-items:baseline;}
+    .nutri-label{font-size:0.74rem;color:rgba(200,170,130,0.7);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
+    .nutri-val{font-size:0.82rem;color:var(--copper-light);font-weight:700;}
+
+    /* ── Meal type tabs ── */
+    .meal-type-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.2rem;}
+    .meal-type-tabs input[type="radio"]{display:none;}
+    .meal-type-tabs label{padding:7px 18px;background:rgba(12,7,3,0.60);border:1px solid var(--border);border-radius:999px;font-size:0.85rem;font-weight:600;color:rgba(200,170,130,0.75);cursor:pointer;transition:all 0.18s;text-transform:none;letter-spacing:0;}
+    .meal-type-tabs input[type="radio"]:checked + label{background:var(--copper-glow-md);border-color:var(--copper);color:var(--copper-pale);}
+    .meal-type-tabs label:hover{border-color:var(--copper);color:var(--copper-light);}
+
+    /* ── Input rows ── */
+    .food-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+    .amount-wrap{flex:1;min-width:110px;position:relative;}
+    .amount-wrap input{padding-right:36px;}
+    .amount-unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:0.78rem;color:rgba(200,170,130,0.80);font-weight:600;pointer-events:none;}
+
+    /* ── Progress bar ── */
+    .progress-wrap{background:rgba(255,200,150,0.08);border-radius:999px;height:10px;overflow:hidden;margin:10px 0 6px;border:1px solid var(--border-subtle);}
+    #progress-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--copper),var(--copper-light));transition:width 0.4s ease,background 0.3s;min-width:4px;}
+    .cal-big{font-family:'Outfit',sans-serif;font-size:2.4rem;font-weight:800;color:#FFF;line-height:1;}
+
+    /* ── Meal groups ── */
+    .meal-group{margin-bottom:1.2rem;}
+    .meal-group-header{display:flex;align-items:center;justify-content:space-between;padding:0 0 8px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+    .meal-group-name{font-size:0.78rem;font-weight:800;letter-spacing:0.10em;text-transform:uppercase;color:var(--copper-light);}
+    .meal-group-total{font-size:0.82rem;font-weight:700;color:rgba(200,170,130,0.80);}
+    .cal-badge{display:inline-block;padding:2px 8px;background:var(--copper-glow);border:1px solid var(--border);border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--copper-light);}
+    .manual-tag{display:inline-block;padding:1px 7px;background:rgba(90,158,224,0.12);border:1px solid rgba(90,158,224,0.3);border-radius:999px;font-size:0.7rem;font-weight:600;color:#90BEE8;margin-left:4px;}
+    .btn-icon{width:30px;height:30px;border-radius:var(--radius-xs);border:1px solid var(--border);background:rgba(12,7,3,0.5);color:rgba(200,170,130,0.80);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.75rem;transition:all 0.18s;}
+    .btn-icon:hover{border-color:var(--copper);color:var(--copper-light);}
+    .btn-icon.danger:hover{border-color:var(--danger-border);color:#F8A8A8;background:var(--danger-bg);}
+    .empty-state{text-align:center;padding:2.5rem 1rem;color:rgba(200,170,130,0.70);font-size:0.9rem;display:flex;flex-direction:column;align-items:center;}
+    #cancel-meal{display:none;width:auto;padding:12px 20px;margin-top:0;background:rgba(240,96,96,0.12);border:1px solid var(--danger-border);color:#F8A8A8;}
+    #cancel-meal:hover{background:rgba(240,96,96,0.24);}
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand"><img src="/assets/logo.png" class="nav-logo" alt="VS"><span class="nav-title brand">VitalSync</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a><a href="/goals.html">Goals</a>
+    <a href="/meals.html" class="active">Meals</a><a href="/sleep.html">Sleep</a>
+    <a href="/stress.html">Stress</a><a href="/exercise.html">Exercise</a>
+    <a href="/weekly.html">Weekly</a><a href="/leaderboard.html">Leaderboard</a><a href="/profile.html">Profile</a>
+    <a href="/ai.html">AI Coach</a>
+  </div>
+  <div class="nav-user"><span id="nav-username"></span><button class="btn-nav-logout" id="btn-logout">Logout</button></div>
+</nav>
+<div id="toast-container"></div>
+
+<div class="page-wrap">
+  <div style="margin-bottom:1.8rem">
+    <h1 class="page-title">Meal Tracker</h1>
+    <p class="page-subtitle">Search the food database for auto-calculated calories, or enter manually.</p>
+  </div>
+
+  <!-- ── Log a Meal ── -->
+  <div class="glass-card copper-top" style="padding:2rem;margin-bottom:1rem" id="log-section">
+    <div class="section-label" id="form-title">Log a Meal</div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-mode-search">
+        <i class="fa fa-magnifying-glass" style="font-size:0.8rem;margin-right:4px"></i>Search
+      </button>
+      <button class="mode-btn" id="btn-mode-manual">
+        <i class="fa fa-pen" style="font-size:0.8rem;margin-right:4px"></i>Manual
+      </button>
+    </div>
+
+    <!-- Meal type tabs (shared between both modes) -->
+    <div class="meal-type-tabs">
+      <input type="radio" name="meal-type" id="mt-breakfast" value="Breakfast" checked>
+      <label for="mt-breakfast">🌅 Breakfast</label>
+      <input type="radio" name="meal-type" id="mt-lunch" value="Lunch">
+      <label for="mt-lunch">☀️ Lunch</label>
+      <input type="radio" name="meal-type" id="mt-dinner" value="Dinner">
+      <label for="mt-dinner">🌙 Dinner</label>
+      <input type="radio" name="meal-type" id="mt-snack" value="Snack">
+      <label for="mt-snack">🍎 Snack</label>
+    </div>
+
+    <!-- ── SEARCH MODE ── -->
+    <div id="search-mode">
+      <div class="food-row">
+        <div class="autocomplete-wrap">
+          <input type="text" id="food-input"
+                 placeholder="Search food… e.g. chicken breast, banana, rice"
+                 autocomplete="off" spellcheck="false">
+          <div id="autocomplete-dropdown"></div>
+        </div>
+        <div class="amount-wrap">
+          <input type="number" id="amount-input" placeholder="Grams" min="1" max="5000">
+          <span class="amount-unit">g</span>
+        </div>
+        <div class="cal-preview" id="cal-preview">🔥 — kcal</div>
+      </div>
+      <div id="portion-btns"></div>
+      <div id="nutri-panel"></div>
+    </div>
+
+    <!-- ── MANUAL MODE ── -->
+    <div id="manual-mode" style="display:none">
+      <p style="font-size:0.82rem;color:rgba(200,170,130,0.75);margin-bottom:1rem">
+        <i class="fa fa-circle-info" style="color:var(--copper-light)"></i>
+        &nbsp;Use this for home-cooked meals, restaurant food, or anything not in the database.
+      </p>
+      <div class="food-row">
+        <div style="flex:2;min-width:200px">
+          <input type="text" id="manual-food-name"
+                 placeholder="Food name (e.g. Home-made biryani)"
+                 autocomplete="off">
+        </div>
+        <div class="amount-wrap">
+          <input type="number" id="manual-calories"
+                 placeholder="Calories" min="0" max="9999">
+          <span class="amount-unit">kcal</span>
+        </div>
+        <div class="cal-preview" id="manual-cal-preview">🔥 — kcal</div>
+      </div>
+      <p style="font-size:0.75rem;color:rgba(200,170,130,0.60);margin-top:8px">
+        Tip: Check the nutrition label, a recipe app, or estimate based on similar foods.
+      </p>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-top:1rem">
+      <button class="btn-primary auto" id="btn-log-meal" style="padding:12px 28px;margin-top:0" disabled>
+        <i class="fa fa-plus"></i> Log Meal
+      </button>
+      <button class="btn-primary" id="cancel-meal"><i class="fa fa-xmark"></i> Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Daily Summary ── -->
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Today's summary</div>
+    <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-bottom:0.8rem">
+      <span class="cal-big" id="total-cal">0</span>
+      <span style="font-size:1.2rem;color:rgba(200,170,130,0.60)">/</span>
+      <span class="cal-big" style="font-size:1.6rem;color:rgba(200,170,130,0.80)" id="goal-display">2,000</span>
+      <span style="font-size:0.85rem;color:rgba(200,170,130,0.80);font-weight:500">kcal eaten today</span>
+    </div>
+    <div class="progress-wrap"><div id="progress-bar" style="width:0%"></div></div>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:4px">
+      <span id="progress-pct" style="font-size:0.85rem;font-weight:700;color:var(--copper-light)">0%</span>
+      <span id="progress-status" style="font-size:0.85rem;color:rgba(200,170,130,0.80)"></span>
+    </div>
+    <p id="skipped-meals" style="margin-top:0.8rem;font-size:0.82rem;color:rgba(200,170,130,0.80)"></p>
+  </div>
+
+  <!-- ── Today's Meals ── -->
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Today's meals</div>
+    <div id="meals-container">
+      <div class="empty-state">
+        <i class="fa fa-bowl-food" style="font-size:2rem;margin-bottom:0.8rem"></i>
+        <p>No meals logged yet today.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Daily Goal ── -->
+  <div class="glass-card" style="padding:2rem">
+    <div class="section-label">Daily calorie goal</div>
+    <p style="font-size:0.85rem;color:rgba(200,170,130,0.80);margin-bottom:1rem">Set your personal daily calorie target.</p>
+    <div style="display:flex;gap:10px;align-items:center;max-width:320px">
+      <input type="number" id="goal-input" placeholder="e.g. 2000" min="300" max="15000" style="flex:1">
+      <span style="font-size:0.85rem;color:rgba(200,170,130,0.70);white-space:nowrap">kcal/day</span>
+      <button class="btn-secondary" id="btn-set-goal" style="padding:10px 16px;flex-shrink:0">
+        <i class="fa fa-check"></i> Set
+      </button>
+    </div>
+  </div>
+
+</div>
+<script type="module" src="/js/meals.js"></script>
+</body>
+</html>

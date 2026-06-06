@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Goals Report — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .stat-row{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;}
+    .stat-box{flex:1;min-width:120px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.3);border-radius:var(--radius-md);padding:1rem 1.2rem;}
+    .stat-val{font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#C39BD3;}
+    .stat-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(200,170,130,0.75);margin-top:4px;}
+    .rate-bar-wrap{height:6px;background:rgba(255,200,150,0.1);border-radius:999px;overflow:hidden;margin-top:6px;}
+    .rate-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#52C990,#8DEBB8);}
+  </style>
+</head>
+<body>
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand"><img src="/assets/logo.png" class="nav-logo" alt="VS"><span class="nav-title brand">VitalSync</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a><a href="/reports/weight.html">Weight</a>
+    <a href="/reports/sleep.html">Sleep</a><a href="/reports/stress.html">Stress</a>
+    <a href="/reports/exercise.html">Exercise</a><a href="/reports/meals.html">Meals</a>
+  </div>
+  <div class="nav-user"><span id="nav-username"></span><button class="btn-nav-logout" id="btn-logout">Logout</button></div>
+</nav>
+<div id="toast-container"></div>
+<div class="page-wrap">
+  <div style="margin-bottom:1.8rem">
+    <h1 class="page-title">🎯 Goals Report</h1>
+    <p class="page-subtitle">All-time goal completion rates, streaks, and per-type performance.</p>
+  </div>
+
+  <div class="stat-row" id="stat-row"></div>
+
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Daily Completion Rate</div>
+    <canvas id="chart" height="80"></canvas>
+  </div>
+
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Performance by Goal Type</div>
+    <div id="type-table"></div>
+  </div>
+
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">🏅 Longest Streaks per Goal Type</div>
+    <div id="streak-table"></div>
+  </div>
+
+  <div class="glass-card" style="padding:2rem">
+    <div class="section-label">Daily Summary (All Time)</div>
+    <div id="daily-table"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module">
+import { guardAuth, initNav, apiFetch, toast } from '/js/api.js';
+await guardAuth(); initNav('/reports/goals.html');
+const CO = { ticks:{color:'#9A8A78'}, grid:{color:'rgba(255,200,150,0.05)'} };
+
+try {
+  const d = await apiFetch('/api/reports/goals');
+  const { byDay, overall, byType, streaks } = d;
+
+  document.getElementById('stat-row').innerHTML = [
+    ['Overall Rate',       overall.rate+'%'],
+    ['Goals Completed',    overall.done+' / '+overall.total],
+    ['Days Tracked',       byDay.length+''],
+    ['Goal Types Tracked', byType.length+''],
+  ].map(([l,v])=>`<div class="stat-box"><div class="stat-val">${v}</div><div class="stat-label">${l}</div></div>`).join('');
+
+  new Chart(document.getElementById('chart').getContext('2d'),{
+    type:'bar',
+    data:{ labels:byDay.map(d=>d.date),
+           datasets:[{label:'Completion Rate %',data:byDay.map(d=>d.rate),
+             backgroundColor:byDay.map(d=>d.rate===100?'rgba(82,201,148,0.7)':'rgba(155,89,182,0.6)'),
+             borderRadius:4}]},
+    options:{ responsive:true, plugins:{legend:{labels:{color:'#EDE0D0'}}},
+      scales:{x:CO, y:{...CO,min:0,max:100}} }
+  });
+
+  document.getElementById('type-table').innerHTML = byType.length ? `
+    <table><thead><tr><th>Goal Type</th><th>Completed</th><th>Total</th><th>Rate</th></tr></thead>
+    <tbody>${byType.map(r=>`<tr>
+      <td style="font-weight:500">${r.type}</td>
+      <td>${r.done}</td><td>${r.total}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:${r.rate>=80?'#8DEBB8':r.rate>=50?'#F8D880':'#F8A8A8'}">${r.rate}%</span>
+          <div class="rate-bar-wrap" style="flex:1;min-width:60px"><div class="rate-bar" style="width:${r.rate}%"></div></div>
+        </div>
+      </td>
+    </tr>`).join('')}</tbody></table>` : '<p style="color:rgba(200,170,130,0.70)">No goal data yet.</p>';
+
+  document.getElementById('streak-table').innerHTML = Object.keys(streaks).length ? `
+    <table><thead><tr><th>Goal Type</th><th>Longest Streak</th></tr></thead>
+    <tbody>${Object.entries(streaks).sort(([,a],[,b])=>b-a).map(([type,days])=>`<tr>
+      <td style="font-weight:500">${type}</td>
+      <td style="color:#C39BD3;font-weight:700">${days} day${days!==1?'s':''}</td>
+    </tr>`).join('')}</tbody></table>` : '<p style="color:rgba(200,170,130,0.70)">No streak data yet.</p>';
+
+  document.getElementById('daily-table').innerHTML = byDay.length ? `
+    <table><thead><tr><th>Date</th><th>Completed</th><th>Total</th><th>Rate</th></tr></thead>
+    <tbody>${[...byDay].reverse().map(r=>`<tr>
+      <td>${r.date}</td><td>${r.done}</td><td>${r.total}</td>
+      <td style="color:${r.rate===100?'#8DEBB8':r.rate>=50?'#F8D880':'#F8A8A8'};font-weight:700">${r.rate}%</td>
+    </tr>`).join('')}</tbody></table>` : '<p style="color:rgba(200,170,130,0.70)">No daily data yet.</p>';
+
+} catch(err){ toast(err.message,'error'); }
+</script>
+</body></html>

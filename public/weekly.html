@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekly Summary — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .week-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-bottom:1rem;}
+    .week-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.4rem 1.6rem;position:relative;overflow:hidden;transition:border-color 0.2s;}
+    .week-card:hover{border-color:var(--border-hover);}
+    .week-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .wc-sleep::before{background:linear-gradient(90deg,#52C990,#8DEBB8);}
+    .wc-stress::before{background:linear-gradient(90deg,#D4803A,#F06060);}
+    .wc-exercise::before{background:linear-gradient(90deg,#D4803A,#F0A060);}
+    .wc-meals::before{background:linear-gradient(90deg,#5A9EE0,#90BEE8);}
+    .wc-steps::before{background:linear-gradient(90deg,#5A9EE0,#8DEBB8);}
+    .wc-goals::before{background:linear-gradient(90deg,#9B59B6,#C39BD3);}
+    .wc-icon{font-size:1.6rem;margin-bottom:0.6rem;display:block;}
+    .wc-title{font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.10em;color:var(--text-muted);margin-bottom:0.5rem;}
+    .wc-main{font-family:'Outfit',sans-serif;font-size:2rem;font-weight:800;color:#FFF;line-height:1;}
+    .wc-sub{font-size:0.8rem;color:var(--text-secondary);margin-top:4px;}
+    .wc-detail{font-size:0.75rem;color:var(--text-muted);margin-top:6px;}
+
+    .chart-section{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.6rem;margin-bottom:1rem;}
+    .chart-title{font-size:0.78rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--copper-light);margin-bottom:1rem;}
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+
+    .date-range{font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.8rem;display:flex;align-items:center;gap:8px;}
+    .date-range strong{color:var(--text);}
+
+    .skeleton{background:rgba(255,220,160,0.06);border-radius:var(--radius-sm);animation:pulse 1.5s ease infinite;}
+    @keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}
+
+    @media(max-width:700px){.charts-grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand"><img src="/assets/logo.png" class="nav-logo" alt="VS"><span class="nav-title brand">VitalSync</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a><a href="/goals.html">Goals</a><a href="/meals.html">Meals</a>
+    <a href="/sleep.html">Sleep</a><a href="/stress.html">Stress</a><a href="/exercise.html">Exercise</a>
+    <a href="/weekly.html" class="active">Weekly</a><a href="/leaderboard.html">Leaderboard</a><a href="/profile.html">Profile</a>
+    <a href="/ai.html">AI Coach</a>
+  </div>
+  <div class="nav-user"><span id="nav-username"></span><button class="btn-nav-logout" id="btn-logout">Logout</button></div>
+</nav>
+<div id="toast-container"></div>
+<div class="page-wrap">
+
+  <div style="margin-bottom:0.8rem">
+    <h1 class="page-title">Weekly Summary</h1>
+  </div>
+  <div class="date-range" id="date-range">
+    <i class="fa fa-calendar"></i>
+    <span id="date-label">Loading…</span>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="week-grid" id="week-grid">
+    <!-- skeleton -->
+    ${[...Array(6)].map(() => `<div class="week-card"><div class="skeleton" style="height:80px"></div></div>`).join('')}
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-section">
+      <div class="chart-title">🌙 Sleep (hrs/day)</div>
+      <canvas id="chart-sleep" height="120"></canvas>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title">😰 Stress (avg/day)</div>
+      <canvas id="chart-stress" height="120"></canvas>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title">🔥 Calories Burned (exercise)</div>
+      <canvas id="chart-burn" height="120"></canvas>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title">🍽️ Calories Eaten</div>
+      <canvas id="chart-eat" height="120"></canvas>
+    </div>
+  </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module" src="/js/weekly.js"></script>
+</body>
+</html>

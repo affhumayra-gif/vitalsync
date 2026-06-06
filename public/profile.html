@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand">
+    <img src="/assets/logo.png" class="nav-logo" alt="VitalSync">
+    <span class="nav-title brand">VitalSync</span>
+  </a>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/goals.html">Goals</a>
+    <a href="/meals.html">Meals</a>
+    <a href="/sleep.html">Sleep</a>
+    <a href="/stress.html">Stress</a>
+    <a href="/exercise.html">Exercise</a>
+    <a href="/weekly.html">Weekly</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="/profile.html" class="active">Profile</a>
+    <a href="/ai.html">AI Coach</a>
+  </div>
+  <div class="nav-user">
+    <span id="nav-username"></span>
+    <button class="btn-nav-logout" id="btn-logout">Logout</button>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+
+<div class="page-wrap">
+
+  <!-- Loading skeleton -->
+  <div id="loading" style="text-align:center;padding:4rem 0;color:var(--text-secondary)">
+    <span class="spinner"></span>
+    <p style="margin-top:1rem;font-size:0.9rem">Loading profile…</p>
+  </div>
+
+  <!-- Profile content (hidden until data loads) -->
+  <div id="profile-content" style="display:none">
+
+    <div style="margin-bottom:1.8rem">
+      <h1 class="page-title">Your Profile</h1>
+      <p class="page-subtitle">Manage your account and body metrics</p>
+    </div>
+
+    <!-- ── Account details ── -->
+    <div class="glass-card copper-top" style="padding:2rem;margin-bottom:1rem">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar">?</div>
+        <div>
+          <div class="profile-name"  id="profile-name">—</div>
+          <div class="profile-email" id="profile-email">—</div>
+          <div class="profile-since" id="profile-since">—</div>
+        </div>
+      </div>
+
+      <div class="section-label">Account details</div>
+      <form id="form-profile">
+        <div class="form-row">
+          <div>
+            <label for="input-name">Full Name</label>
+            <input type="text" id="input-name" name="displayName" required minlength="2">
+          </div>
+          <div>
+            <label for="input-email">Email Address</label>
+            <input type="email" id="input-email" name="email" required>
+          </div>
+        </div>
+        <div style="margin-top:1.2rem">
+          <button type="submit" class="btn-primary auto" style="padding:10px 24px;margin-top:0">
+            <i class="fa fa-check" style="font-size:0.82rem"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Body Metrics ── -->
+    <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+      <div class="section-label">Body metrics</div>
+      <form id="form-metrics">
+        <div class="form-row">
+          <div>
+            <label for="input-weight">Weight (kg)</label>
+            <input type="number" id="input-weight" name="weightKg" step="0.1" min="20" max="400" placeholder="e.g. 72.5">
+          </div>
+          <div>
+            <label for="input-bmr">BMR (kcal / day)</label>
+            <input type="number" id="input-bmr" name="bmr" step="1" min="500" max="6000" placeholder="e.g. 1820">
+          </div>
+        </div>
+        <p style="font-size:0.78rem;color:var(--text-secondary);margin:0.6rem 0 1rem;line-height:1.5">
+          BMR = calories your body burns at rest per day. Use a BMR calculator based on age, height, gender and weight.
+        </p>
+        <button type="submit" class="btn-secondary" style="padding:9px 20px">
+          <i class="fa fa-weight-scale" style="font-size:0.82rem"></i> Log Metrics
+        </button>
+      </form>
+
+      <div id="metrics-history-wrap" style="display:none">
+        <div class="divider"></div>
+        <p class="muted" style="margin-bottom:0.8rem">Recent entries</p>
+        <table>
+          <thead><tr><th>Date</th><th>Weight (kg)</th><th>BMR</th></tr></thead>
+          <tbody id="metrics-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Danger zone ── -->
+    <div class="glass-card" style="padding:2rem">
+      <div class="section-label" style="color:var(--danger)">Danger zone</div>
+      <div class="danger-zone">
+        <h4>Delete Account</h4>
+        <p>Permanently deletes your account and <strong style="color:var(--text)">all health data</strong> from Firestore. This cannot be undone.</p>
+        <button id="btn-delete-account" class="btn-danger">
+          <i class="fa fa-trash" style="font-size:0.82rem"></i> Delete My Account
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /profile-content -->
+</div><!-- /page-wrap -->
+
+<script type="module">
+  import { guardAuth, initNav, apiFetch, toast } from '/js/api.js';
+  import { firebaseAuth }                        from '/js/firebase-config.js';
+  import { updatePassword, reauthenticateWithCredential, EmailAuthProvider }
+    from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+  // ── Boot ─────────────────────────────────────────────────────────────────
+  const user = await guardAuth();
+  initNav('/profile.html');
+
+  // ── Load profile ─────────────────────────────────────────────────────────
+  let profileData = null;
+
+  async function loadProfile() {
+    try {
+      const data = await apiFetch('/api/auth/profile');
+      profileData = data.profile;
+
+      // Populate header
+      const initials = (profileData.displayName || '?')[0].toUpperCase();
+      document.getElementById('profile-avatar').textContent = initials;
+      document.getElementById('profile-name').textContent  = profileData.displayName || '—';
+      document.getElementById('profile-email').textContent = profileData.email || '—';
+      document.getElementById('profile-since').textContent =
+        profileData.createdAt
+          ? 'Member since ' + new Date(profileData.createdAt).toLocaleDateString('en-US', { month:'long', year:'numeric' })
+          : '';
+
+      // Pre-fill form
+      document.getElementById('input-name').value  = profileData.displayName || '';
+      document.getElementById('input-email').value = profileData.email || '';
+
+      // Latest metrics
+      if (data.latestMetrics) {
+        document.getElementById('input-weight').value = data.latestMetrics.weightKg || '';
+        document.getElementById('input-bmr').value    = data.latestMetrics.bmr || '';
+      }
+
+      // Metrics history table
+      if (data.metricsHistory && data.metricsHistory.length) {
+        document.getElementById('metrics-history-wrap').style.display = 'block';
+        const tbody = document.getElementById('metrics-table-body');
+        tbody.innerHTML = data.metricsHistory.map(m => `
+          <tr>
+            <td>${new Date(m.recordedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</td>
+            <td>${m.weightKg ?? '—'}</td>
+            <td>${m.bmr ?? '—'}</td>
+          </tr>
+        `).join('');
+      }
+
+      document.getElementById('loading').style.display         = 'none';
+      document.getElementById('profile-content').style.display = 'block';
+
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  await loadProfile();
+
+  // ── Update profile ────────────────────────────────────────────────────────
+  document.getElementById('form-profile').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const displayName = document.getElementById('input-name').value.trim();
+    const email       = document.getElementById('input-email').value.trim();
+
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…';
+    try {
+      await apiFetch('/api/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ displayName, email }),
+      });
+      toast('Profile updated successfully.', 'success');
+      document.getElementById('profile-name').textContent  = displayName;
+      document.getElementById('profile-avatar').textContent = displayName[0].toUpperCase();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    btn.disabled = false; btn.innerHTML = '<i class="fa fa-check" style="font-size:0.82rem"></i> Save Changes';
+  });
+
+  // ── Log metrics ───────────────────────────────────────────────────────────
+  document.getElementById('form-metrics').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn      = e.target.querySelector('button[type="submit"]');
+    const weightKg = document.getElementById('input-weight').value;
+    const bmr      = document.getElementById('input-bmr').value;
+
+    if (!weightKg) { toast('Please enter your weight.', 'error'); return; }
+
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Logging…';
+    try {
+      await apiFetch('/api/auth/metrics', {
+        method: 'POST',
+        body: JSON.stringify({ weightKg: Number(weightKg), bmr: bmr ? Number(bmr) : null }),
+      });
+      toast('Body metrics logged.', 'success');
+      await loadProfile();   // Refresh history table
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-weight-scale" style="font-size:0.82rem"></i> Log Metrics';
+  });
+
+  // ── Delete account ────────────────────────────────────────────────────────
+  document.getElementById('btn-delete-account').addEventListener('click', async () => {
+    const confirmed = confirm(
+      'This will permanently delete your VitalSync account and ALL your health data.\n\nThis cannot be undone. Are you absolutely sure?'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('btn-delete-account');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Deleting…';
+
+    try {
+      await apiFetch('/api/auth/account', { method: 'DELETE' });
+      await firebaseAuth.signOut();
+      window.location.href = '/index.html';
+    } catch (err) {
+      toast(err.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-trash" style="font-size:0.82rem"></i> Delete My Account';
+    }
+  });
+</script>
+
+</body>
+</html>

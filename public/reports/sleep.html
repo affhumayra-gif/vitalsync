@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Sleep Report — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .stat-row{display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;}
+    .stat-box{flex:1;min-width:120px;background:rgba(82,201,148,0.08);border:1px solid rgba(82,201,148,0.25);border-radius:var(--radius-md);padding:1rem 1.2rem;}
+    .stat-val{font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#8DEBB8;}
+    .stat-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(200,170,130,0.75);margin-top:4px;}
+  </style>
+</head>
+<body>
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand"><img src="/assets/logo.png" class="nav-logo" alt="VS"><span class="nav-title brand">VitalSync</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a><a href="/reports/weight.html">Weight</a>
+    <a href="/reports/stress.html">Stress</a><a href="/reports/exercise.html">Exercise</a>
+    <a href="/reports/meals.html">Meals</a><a href="/reports/goals.html">Goals</a>
+  </div>
+  <div class="nav-user"><span id="nav-username"></span><button class="btn-nav-logout" id="btn-logout">Logout</button></div>
+</nav>
+<div id="toast-container"></div>
+<div class="page-wrap">
+  <div style="margin-bottom:1.8rem">
+    <h1 class="page-title">🌙 Sleep Report</h1>
+    <p class="page-subtitle">All-time sleep history, quality trends, and wakeup patterns.</p>
+  </div>
+
+  <div class="stat-row" id="stat-row"></div>
+
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Sleep Hours Per Day</div>
+    <canvas id="chart" height="80"></canvas>
+  </div>
+
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Daily Sleep History</div>
+    <div id="daily-table"></div>
+  </div>
+
+  <div class="glass-card" style="padding:2rem">
+    <div class="section-label">Nights with Wakeups &gt; 1</div>
+    <div id="wakeup-table"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module">
+import { guardAuth, initNav, apiFetch, toast } from '/js/api.js';
+await guardAuth(); initNav('/reports/sleep.html');
+const CO = { ticks:{color:'#9A8A78'}, grid:{color:'rgba(255,200,150,0.05)'} };
+
+try {
+  const d = await apiFetch('/api/reports/sleep');
+  const { byDay, stats, sessions, wakeups } = d;
+
+  document.getElementById('stat-row').innerHTML = [
+    ['Avg per session', stats.avgSession+' hrs'],
+    ['Avg per night',   stats.avgPerDay+' hrs'],
+    ['Nights ≥ 7 hrs',  stats.daysOver8+''],
+    ['Nights < 7 hrs',  stats.daysUnder7+''],
+    ['Best night', stats.bestDay?.date ? stats.bestDay.date+' ('+stats.bestDay.hours+' hrs)' : '—'],
+  ].map(([l,v])=>`<div class="stat-box"><div class="stat-val">${v}</div><div class="stat-label">${l}</div></div>`).join('');
+
+  new Chart(document.getElementById('chart').getContext('2d'),{
+    type:'bar',
+    data:{ labels:byDay.map(d=>d.date),
+           datasets:[{ label:'Hours Slept', data:byDay.map(d=>d.hours),
+             backgroundColor: byDay.map(d=>d.hours>=7?'rgba(82,201,148,0.7)':'rgba(240,96,96,0.7)'),
+             borderRadius:4 }] },
+    options:{ responsive:true, plugins:{legend:{labels:{color:'#EDE0D0'}}},
+      scales:{x:CO, y:{...CO, min:0, max:12}} }
+  });
+
+  document.getElementById('daily-table').innerHTML = byDay.length ? `
+    <table><thead><tr><th>Date</th><th>Hours Slept</th><th>Quality</th></tr></thead>
+    <tbody>${byDay.map(r=>{
+      const q = r.hours>=8?['Good','#8DEBB8']:r.hours>=7?['Good','#8DEBB8']:r.hours>=5?['Fair','#F8D880']:['Poor','#F8A8A8'];
+      return`<tr><td>${r.date}</td><td><strong>${r.hours}</strong></td>
+        <td><span style="color:${q[1]};font-weight:700">${q[0]}</span></td></tr>`;
+    }).join('')}</tbody></table>` : '<p style="color:rgba(200,170,130,0.70)">No sleep data yet.</p>';
+
+  document.getElementById('wakeup-table').innerHTML = wakeups.length ? `
+    <table><thead><tr><th>Date</th><th>Wake Count</th></tr></thead>
+    <tbody>${wakeups.map(r=>`<tr><td>${r.date}</td><td style="color:#F8D880;font-weight:700">${r.wakeCount}</td></tr>`).join('')}</tbody></table>`
+    : '<p style="color:rgba(200,170,130,0.70)">No nights with more than 1 wakeup.</p>';
+
+} catch(err){ toast(err.message,'error'); }
+</script>
+</body></html>

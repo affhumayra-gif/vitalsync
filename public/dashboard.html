@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* ── Burn breakdown ── */
+    .burn-breakdown{display:flex;flex-wrap:wrap;gap:1rem;padding:1rem 1.5rem 1.2rem;background:rgba(212,128,58,0.05);border-top:1px solid var(--border);}
+    .breakdown-item{display:flex;flex-direction:column;gap:2px;}
+    .breakdown-label{font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(200,170,130,0.70);}
+    .breakdown-val{font-family:'Outfit',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text);}
+    .breakdown-val.copper{color:var(--copper-light);}
+    .breakdown-sep{width:1px;background:var(--border);align-self:stretch;margin:0 4px;}
+
+    /* ── Health tip ── */
+    .health-tip{display:flex;align-items:flex-start;gap:12px;padding:1rem 1.5rem 1.2rem;border-top:1px solid var(--border);font-size:0.88rem;line-height:1.6;}
+    .tip-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px;}
+    .tip-text{color:rgba(200,170,130,0.85);}
+    .tip-text.success{color:#8DEBB8;}
+    .tip-text.warning{color:#F8D880;}
+    .tip-text.danger {color:#F8A8A8;}
+    .tip-text.info   {color:#A8D8FF;}
+
+    /* ── Alert banners ── */
+    @keyframes alert-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    #alerts-container{display:none;flex-direction:column;gap:8px;margin-bottom:1rem;}
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand">
+    <img src="/assets/logo.png" class="nav-logo" alt="VitalSync">
+    <span class="nav-title brand">VitalSync</span>
+  </a>
+  <div class="nav-links">
+    <a href="/dashboard.html" class="active">Dashboard</a>
+    <a href="/goals.html">Goals</a>
+    <a href="/meals.html">Meals</a>
+    <a href="/sleep.html">Sleep</a>
+    <a href="/stress.html">Stress</a>
+    <a href="/exercise.html">Exercise</a>
+    <a href="/weekly.html">Weekly</a>
+    <a href="/leaderboard.html">Leaderboard</a>
+    <a href="/profile.html">Profile</a>
+    <a href="/ai.html">AI Coach</a>
+  </div>
+  <div class="nav-user">
+    <span id="nav-username"></span>
+    <button class="btn-nav-logout" id="btn-logout">Logout</button>
+  </div>
+</nav>
+
+<div id="toast-container"></div>
+
+<div class="page-wrap">
+
+  <!-- Greeting -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem">
+    <div>
+      <h1 class="page-title" style="font-size:1.8rem">
+        Good <span id="greet-word">day</span>,
+        <span style="color:var(--copper-light)" id="greeting-name">…</span>
+      </h1>
+      <p class="page-subtitle" id="greeting-sub">Loading your health snapshot…</p>
+    </div>
+    <img src="/assets/logo.png" alt="VitalSync"
+         style="width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 0 12px var(--copper-glow-md))">
+  </div>
+
+  <!-- ── Metric circles + breakdown + health tip ── -->
+  <div class="glass-card copper-top" style="margin-bottom:1rem">
+    <div class="goal-circles">
+      <div class="circle-card"><p>Sleep</p><div class="circle sleep"  id="circle-sleep">—</div></div>
+      <div class="circle-card"><p>Steps</p><div class="circle steps"  id="circle-steps">—</div></div>
+      <div class="circle-card"><p>Stress</p><div class="circle stress" id="circle-stress">—</div></div>
+      <div class="circle-card"><p>Deficit</p><div class="circle calories" id="circle-deficit">—</div></div>
+    </div>
+
+    <!-- Calorie breakdown row (shown when data available) -->
+    <div class="burn-breakdown" id="burn-breakdown" style="display:none">
+      <div class="breakdown-item"><span class="breakdown-label">BMR</span><span class="breakdown-val" id="bd-bmr">—</span></div>
+      <div class="breakdown-sep"></div>
+      <div class="breakdown-item"><span class="breakdown-label">Exercise</span><span class="breakdown-val" id="bd-ex">—</span></div>
+      <div class="breakdown-sep"></div>
+      <div class="breakdown-item"><span class="breakdown-label">Steps</span><span class="breakdown-val" id="bd-steps">—</span></div>
+      <div class="breakdown-sep"></div>
+      <div class="breakdown-item"><span class="breakdown-label">Total Burned</span><span class="breakdown-val copper" id="bd-total">—</span></div>
+      <div class="breakdown-sep"></div>
+      <div class="breakdown-item"><span class="breakdown-label">Eaten</span><span class="breakdown-val" id="bd-eaten">—</span></div>
+    </div>
+
+    <!-- Health tip -->
+    <div class="health-tip" id="health-tip" style="display:none">
+      <span class="tip-icon" id="tip-icon">💡</span>
+      <span class="tip-text" id="tip-text"></span>
+    </div>
+  </div>
+
+  <!-- ── Smart alert banners ── -->
+  <div id="alerts-container"></div>
+
+  <!-- ── Vital pages ── -->
+  <div class="glass-card" style="padding:1.5rem;margin-bottom:1rem">
+    <div class="section-label">Vital pages</div>
+    <div class="task-strip">
+      <a href="/goals.html"       class="btn-link"><i class="fa fa-bullseye"></i> Goals</a>
+      <a href="/meals.html"       class="btn-link"><i class="fa fa-utensils"></i> Meals</a>
+      <a href="/sleep.html"       class="btn-link"><i class="fa fa-bed"></i> Sleep</a>
+      <a href="/stress.html"      class="btn-link"><i class="fa fa-brain"></i> Stress</a>
+      <a href="/weekly.html"      class="btn-link"><i class="fa fa-chart-bar"></i> Weekly</a>
+      <a href="/exercise.html"    class="btn-link"><i class="fa fa-dumbbell"></i> Exercise</a>
+      <a href="/leaderboard.html" class="btn-link"><i class="fa fa-trophy"></i> Leaderboard</a>
+      <a href="/ai.html" class="btn-link"><i class="fa fa-robot"></i> AI Coach</a>
+    </div>
+  </div>
+
+  <!-- ── Reports ── -->
+  <div class="glass-card" style="padding:1.5rem">
+    <div class="section-label">Reports</div>
+    <div class="task-strip">
+      <a href="/reports/weight.html"   class="btn-link"><i class="fa fa-weight-scale"></i> Weight</a>
+      <a href="/reports/sleep.html"    class="btn-link"><i class="fa fa-moon"></i> Sleep</a>
+      <a href="/reports/stress.html"   class="btn-link"><i class="fa fa-wave-square"></i> Stress</a>
+      <a href="/reports/exercise.html" class="btn-link"><i class="fa fa-fire"></i> Exercise</a>
+      <a href="/reports/meals.html"    class="btn-link"><i class="fa fa-bowl-food"></i> Meals</a>
+      <a href="/reports/goals.html"    class="btn-link"><i class="fa fa-list-check"></i> Goals</a>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<script type="module">
+import { guardAuth, initNav, apiFetch } from '/js/api.js';
+import { buildAlerts, renderAlerts, startReminders, hasNotificationPermission } from '/js/notifications.js';
+
+const user = await guardAuth();
+initNav('/dashboard.html');
+
+// Greeting
+const hour = new Date().getHours();
+document.getElementById('greet-word').textContent =
+  hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+document.getElementById('greeting-name').textContent =
+  user.displayName || user.email?.split('@')[0] || 'there';
+
+// Kick off reminders if already permitted
+if (hasNotificationPermission()) startReminders();
+
+// Load summary
+try {
+  const d = await apiFetch('/api/dashboard/summary');
+
+  // ── Circles ──────────────────────────────────────────────────────
+  const sleepEl   = document.getElementById('circle-sleep');
+  const stepsEl   = document.getElementById('circle-steps');
+  const stressEl  = document.getElementById('circle-stress');
+  const defEl     = document.getElementById('circle-deficit');
+
+  sleepEl.textContent  = d.sleep  != null ? `${d.sleep} hrs` : '—';
+  stepsEl.textContent  = d.steps  != null ? Number(d.steps).toLocaleString() : '—';
+  stressEl.textContent = d.stress != null ? d.stress : '—';
+
+  if (d.deficit != null) {
+    defEl.textContent = `${d.deficit > 0 ? '+' : ''}${d.deficit}`;
+    if (d.deficit < 0) {
+      defEl.style.color       = 'var(--danger)';
+      defEl.style.borderColor = 'rgba(240,96,96,0.8)';
+    } else if (d.deficit > 300) {
+      defEl.style.color       = '#8DEBB8';
+      defEl.style.borderColor = 'rgba(92,201,148,0.8)';
+    }
+  }
+
+  // ── Breakdown row ────────────────────────────────────────────────
+  if (d.totalBurn || d.caloriesEaten) {
+    document.getElementById('bd-bmr').textContent   = `${d.bmr ?? 0} kcal`;
+    document.getElementById('bd-ex').textContent    = `${d.exerciseBurn ?? 0} kcal`;
+    document.getElementById('bd-steps').textContent = `${d.stepsBurn ?? 0} kcal`;
+    document.getElementById('bd-total').textContent = `${d.totalBurn ?? 0} kcal`;
+    document.getElementById('bd-eaten').textContent = `${d.caloriesEaten ?? 0} kcal`;
+    document.getElementById('burn-breakdown').style.display = 'flex';
+  }
+
+  // ── Health tip ───────────────────────────────────────────────────
+  if (d.healthTip) {
+    const icons = { success:'✅', warning:'⚠️', danger:'🚨', info:'💡' };
+    document.getElementById('tip-icon').textContent = icons[d.healthTip.type] || '💡';
+    const tipEl = document.getElementById('tip-text');
+    tipEl.textContent = d.healthTip.tip;
+    tipEl.className   = `tip-text ${d.healthTip.type}`;
+    document.getElementById('health-tip').style.display = 'flex';
+  }
+
+  // ── Smart alert banners ──────────────────────────────────────────
+  const alertsContainer = document.getElementById('alerts-container');
+  const alerts = buildAlerts(d);
+  renderAlerts(alertsContainer, alerts);
+
+  // ── Subtitle ─────────────────────────────────────────────────────
+  const dateStr = new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+  document.getElementById('greeting-sub').textContent = `Health snapshot for ${dateStr}`;
+
+} catch (err) {
+  document.getElementById('greeting-sub').textContent = 'Could not load summary.';
+  console.warn('[dashboard]', err.message);
+}
+</script>
+
+</body>
+</html>

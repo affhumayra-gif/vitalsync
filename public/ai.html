@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Health Coach — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .coach-card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .analysis-body {
+      font-size: 0.9rem;
+      line-height: 1.75;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+    }
+
+    .analysis-body h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--copper-light);
+      margin: 1.2rem 0 0.4rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+
+    .data-pill-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 1.2rem;
+    }
+
+    .data-pill {
+      background: rgba(212, 128, 58, 0.08);
+      border: 1px solid rgba(212, 128, 58, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-size: 0.82rem;
+    }
+
+    .data-pill strong {
+      color: var(--copper-light);
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+
+    .qa-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      padding-right: 4px;
+    }
+
+    .qa-msg {
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .qa-msg.user {
+      background: rgba(212, 128, 58, 0.12);
+      border: 1px solid rgba(212, 128, 58, 0.3);
+      color: var(--text);
+      align-self: flex-end;
+      max-width: 80%;
+    }
+
+    .qa-msg.ai {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      align-self: flex-start;
+      max-width: 90%;
+    }
+
+    .qa-msg.ai strong {
+      color: var(--copper-light);
+    }
+
+    /* Fix for invisible text in input */
+    #qa-input {
+      color: #EDE0D0 !important;
+      background: rgba(12, 7, 3, 0.6) !important;
+      border: 1px solid var(--border) !important;
+      padding: 12px 16px !important;
+      font-size: 0.9rem !important;
+    }
+
+    #qa-input::placeholder {
+      color: rgba(200, 170, 130, 0.5) !important;
+    }
+
+    /* Fix send button size */
+    #btn-ask {
+      padding: 12px 24px !important;
+      margin: 0 !important;
+      white-space: nowrap !important;
+      min-width: auto !important;
+      width: auto !important;
+    }
+
+    /* Make input row responsive */
+    .qa-input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .qa-input-row input {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .loading-dots::after {
+      content: '...';
+      animation: dots 1.2s infinite;
+    }
+
+    @keyframes dots {
+      0% {
+        content: ''
+      }
+
+      33% {
+        content: '.'
+      }
+
+      66% {
+        content: '..'
+      }
+
+      100% {
+        content: '...'
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav id="nav">
+    <a href="/dashboard.html" class="nav-brand"><img src="/assets/logo.png" class="nav-logo" alt="VS"><span
+        class="nav-title brand">VitalSync</span></a>
+    <div class="nav-links">
+      <a href="/dashboard.html">Dashboard</a><a href="/goals.html">Goals</a><a href="/meals.html">Meals</a>
+      <a href="/sleep.html">Sleep</a><a href="/stress.html">Stress</a><a href="/exercise.html">Exercise</a>
+      <a href="/weekly.html">Weekly</a><a href="/leaderboard.html">Leaderboard</a><a href="/profile.html">Profile</a>
+      <a href="/ai.html">AI Coach</a>
+    </div>
+    <div class="nav-user"><span id="nav-username"></span><button class="btn-nav-logout" id="btn-logout">Logout</button>
+    </div>
+  </nav>
+  <div id="toast-container"></div>
+  <div class="page-wrap">
+
+    <div style="margin-bottom:1.8rem">
+      <h1 class="page-title">
+        AI Health Coach
+        <span class="gemini-badge"><i class="fa fa-robot"></i> AI Coach</span>
+      </h1>
+      <p class="page-subtitle">Your personal AI coach analyses your 7-day health data and gives evidence-based
+        recommendations.</p>
+    </div>
+
+    <!-- Weekly Analysis -->
+    <div class="glass-card copper-top" style="padding:2rem;margin-bottom:1rem">
+      <div class="section-label">Weekly Analysis</div>
+      <p style="font-size:0.85rem;color:rgba(200,170,130,0.75);margin-bottom:1.2rem">
+        Click the button below to generate a personalised health coaching report based on your last 7 days of logged
+        data.
+      </p>
+      <button class="btn-primary auto" id="btn-analyse" style="padding:12px 28px;margin:0">
+        <i class="fa fa-sparkles"></i> Generate My Weekly Report
+      </button>
+
+      <!-- Data summary pills (shown after analysis) -->
+      <div class="data-pill-grid" id="data-pills" style="display:none;margin-top:1.4rem"></div>
+
+      <!-- Analysis output -->
+      <div id="analysis-container" style="display:none;margin-top:1rem">
+        <div style="height:1px;background:var(--border);margin-bottom:1.2rem"></div>
+        <div class="analysis-body" id="analysis-text"></div>
+      </div>
+
+      <div id="analysis-loading" style="display:none;padding:2rem;text-align:center;color:rgba(200,170,130,0.75)">
+        <span class="spinner" style="margin-bottom:1rem;display:block;margin-inline:auto"></span>
+        <p style="font-size:0.9rem">Gemini is analysing your health data<span class="loading-dots"></span></p>
+      </div>
+    </div>
+
+    <!-- Q&A -->
+    <div class="glass-card" style="padding:2rem">
+      <div class="section-label">Ask Your Health Coach</div>
+      <p style="font-size:0.85rem;color:rgba(200,170,130,0.75);margin-bottom:1rem">
+        Ask any health question — nutrition, sleep, exercise, stress management — and get an evidence-based answer.
+      </p>
+      <div class="qa-messages" id="qa-messages">
+        <div class="qa-msg ai">
+          <strong>Coach</strong><br>
+          Hi! I'm your VitalSync AI Health Coach  Ask me anything about nutrition, exercise, sleep, or
+          stress management. I'm here to help!
+        </div>
+      </div>
+      <div class="qa-input-row">
+        <input type="text" id="qa-input" placeholder="e.g. How can I improve my sleep quality?" style="flex:1"
+          maxlength="500" autocomplete="off">
+        <button class="btn-primary" id="btn-ask" style="padding:12px 20px;margin:0;flex-shrink:0">
+          <i class="fa fa-paper-plane"></i>
+        </button>
+      </div>
+      <p style="font-size:0.72rem;color:rgba(200,170,130,0.50);margin-top:8px">
+        AI responses are for informational purposes only. Consult a healthcare professional for medical advice.
+      </p>
+    </div>
+
+  </div>
+  <script type="module">
+    import { guardAuth, initNav, apiFetch, toast } from '/js/api.js';
+    const user = await guardAuth();
+    initNav('/ai.html');
+
+    // ── Weekly analysis ────────────────────────────────────────────────────
+    document.getElementById('btn-analyse').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-analyse');
+      btn.disabled = true;
+      document.getElementById('analysis-container').style.display = 'none';
+      document.getElementById('data-pills').style.display = 'none';
+      document.getElementById('analysis-loading').style.display = 'block';
+
+      try {
+        const res = await apiFetch('/api/ai/coach', { method: 'POST' });
+
+        // Show data pills
+        const d = res.data;
+        const fmt = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const pills = [
+          ['Week', `${fmt(d.weekRange.start)} – ${fmt(d.weekRange.end)}`],
+          ['Sleep avg', `${d.sleep.avg} hrs/night`],
+          ['Stress avg', `${d.stress.avg}/100`],
+          ['Exercise', `${d.exercise.days} days · ${d.exercise.calories} kcal`],
+          ['Avg calories', `${d.nutrition.avg} kcal/day`],
+          ['Steps (total)', `${Number(d.steps.total).toLocaleString()}`],
+          ['Goal rate', `${d.goals.rate}%`],
+        ];
+        document.getElementById('data-pills').innerHTML = pills.map(([label, val]) =>
+          `<div class="data-pill"><strong>${label}</strong>${val}</div>`
+        ).join('');
+        document.getElementById('data-pills').style.display = 'flex';
+
+        // Render analysis — convert markdown ## headers to styled spans
+        const formatted = res.analysis
+          .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        document.getElementById('analysis-text').innerHTML = formatted;
+        document.getElementById('analysis-container').style.display = 'block';
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+
+      document.getElementById('analysis-loading').style.display = 'none';
+      btn.disabled = false;
+    });
+
+    // ── Q&A ────────────────────────────────────────────────────────────────
+    const qaInput = document.getElementById('qa-input');
+    const qaMsgs = document.getElementById('qa-messages');
+    const askBtn = document.getElementById('btn-ask');
+
+    async function sendQuestion() {
+      const q = qaInput.value.trim();
+      if (!q) return;
+      qaInput.value = '';
+      askBtn.disabled = true;
+
+      // User bubble
+      qaMsgs.innerHTML += `<div class="qa-msg user">${esc(q)}</div>`;
+      // Loading bubble
+      const loadId = 'ai-loading-' + Date.now();
+      qaMsgs.innerHTML += `<div class="qa-msg ai" id="${loadId}"><strong>Coach</strong><br><span class="loading-dots"></span></div>`;
+      qaMsgs.scrollTop = qaMsgs.scrollHeight;
+
+      try {
+        const res = await apiFetch('/api/ai/ask', { method: 'POST', body: JSON.stringify({ question: q }) });
+        document.getElementById(loadId).innerHTML = `<strong>Coach</strong><br>${esc(res.answer)}`;
+      } catch (err) {
+        document.getElementById(loadId).innerHTML = `<strong>Coach</strong><br>Sorry, I couldn't get a response. Please try again.`;
+      }
+
+      qaMsgs.scrollTop = qaMsgs.scrollHeight;
+      askBtn.disabled = false;
+    }
+
+    askBtn.addEventListener('click', sendQuestion);
+    qaInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendQuestion(); });
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stress — VitalSync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .stress-slider-wrap{margin:1.2rem 0;}
+    #stress-slider{
+      -webkit-appearance:none;appearance:none;width:100%;height:10px;
+      border-radius:999px;outline:none;cursor:pointer;
+      background:linear-gradient(90deg,#52C990,#F0B040,#F06060);
+      border:1px solid var(--border-subtle);
+    }
+    #stress-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);cursor:pointer;border:2px solid var(--copper);}
+    .stress-big{font-family:'Outfit',sans-serif;font-size:3.5rem;font-weight:800;line-height:1;transition:color 0.2s;}
+    .stress-label{font-size:1.2rem;font-weight:600;margin-top:4px;transition:color 0.2s;}
+    .status-badge{display:inline-block;padding:3px 12px;border-radius:999px;font-size:0.78rem;font-weight:700;}
+    .s-success{background:rgba(82,201,148,0.15);border:1px solid rgba(82,201,148,0.4);color:#8DEBB8;}
+    .s-warning{background:rgba(240,176,64,0.15);border:1px solid rgba(240,176,64,0.4);color:#F8D880;}
+    .s-danger {background:rgba(240,96,96,0.15);border:1px solid rgba(240,96,96,0.4);color:#F8A8A8;}
+    .btn-icon{width:30px;height:30px;border-radius:var(--radius-xs);border:1px solid var(--border);background:rgba(12,7,3,0.5);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.75rem;transition:all 0.18s;}
+    .btn-icon.danger:hover{border-color:var(--danger-border);color:#F8A8A8;background:var(--danger-bg);}
+    .empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:0.9rem;display:flex;flex-direction:column;align-items:center;}
+  </style>
+</head>
+<body>
+<nav id="nav">
+  <a href="/dashboard.html" class="nav-brand"><img src="/assets/logo.png" class="nav-logo" alt="VS"><span class="nav-title brand">VitalSync</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html">Dashboard</a><a href="/goals.html">Goals</a><a href="/meals.html">Meals</a>
+    <a href="/sleep.html">Sleep</a><a href="/stress.html" class="active">Stress</a><a href="/exercise.html">Exercise</a>
+    <a href="/weekly.html">Weekly</a><a href="/leaderboard.html">Leaderboard</a><a href="/profile.html">Profile</a>
+    <a href="/ai.html">AI Coach</a>
+  </div>
+  <div class="nav-user"><span id="nav-username"></span><button class="btn-nav-logout" id="btn-logout">Logout</button></div>
+</nav>
+<div id="toast-container"></div>
+<div class="page-wrap">
+  <div style="margin-bottom:1.8rem">
+    <h1 class="page-title">Stress Tracker</h1>
+    <p class="page-subtitle">Log your current stress level on a 0–100 scale. 0 = completely calm, 100 = maximum stress.</p>
+  </div>
+
+  <!-- Log form -->
+  <div class="glass-card copper-top" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Log Stress Reading</div>
+    <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap">
+      <div style="text-align:center;min-width:100px">
+        <div class="stress-big" id="stress-display">50</div>
+        <div class="stress-label" id="stress-label">😐 OK</div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div class="stress-slider-wrap">
+          <input type="range" id="stress-slider" min="0" max="100" value="50">
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-top:4px">
+          <span>😌 Calm (0)</span><span>😐 Moderate (50)</span><span>😰 High (100)</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary auto" id="btn-log-stress" style="padding:12px 28px;margin-top:1.2rem">
+      <i class="fa fa-wave-square"></i> Log Reading
+    </button>
+  </div>
+
+  <!-- Chart -->
+  <div class="glass-card" style="padding:2rem;margin-bottom:1rem">
+    <div class="section-label">Stress Over Time</div>
+    <canvas id="stress-chart" height="80"></canvas>
+  </div>
+
+  <!-- History -->
+  <div class="glass-card" style="padding:2rem">
+    <div class="section-label">Reading History</div>
+    <div id="stress-list">
+      <div class="empty-state"><i class="fa fa-brain" style="font-size:2rem;color:var(--text-muted);margin-bottom:0.8rem"></i><p>No stress readings yet.</p></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module" src="/js/stress.js"></script>
+</body>
+</html>
